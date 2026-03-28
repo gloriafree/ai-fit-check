@@ -1,0 +1,36 @@
+version: '3.8'
+
+services:
+  ai-fit-check-backend:
+    build:
+      context: ..
+      dockerfile: server/Dockerfile
+    container_name: ai-fit-check-backend
+    ports:
+      - "8000:8000"
+    environment:
+      - PYTHONUNBUFFERED=1
+      - FASHN_API_KEY=${FASHN_API_KEY}
+    volumes:
+      # Mount data directory for persistence
+      - ./data:/app/server/data
+      # Mount configs for easy updates
+      - ../configs:/app/configs
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 5s
+
+  # Optional: Nginx reverse proxy
+  # nginx:
+  #   image: nginx:alpine
+  #   container_name: ai-fit-check-nginx
+  #   ports:
+  #     - "80:80"
+  #   volumes:
+  #     - ./nginx.conf:/etc/nginx/nginx.conf:ro
+  #   depends_on:
+  #     - ai-fit-check-backend
