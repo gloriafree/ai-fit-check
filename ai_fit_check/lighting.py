@@ -10,7 +10,6 @@ from pathlib import Path
 from typing import Optional, Dict
 
 import numpy as np
-import torch
 from PIL import Image, ImageEnhance, ImageFilter
 
 logger = logging.getLogger(__name__)
@@ -21,7 +20,7 @@ class LightingHarmonizer:
 
     def __init__(self, config: dict):
         self.config = config.get("ic_light", {})
-        self.device = self.config.get("device", "cuda" if torch.cuda.is_available() else "cpu")
+        self.device = self.config.get("device", "cpu")
         self.prompt = self.config.get("prompt", "soft studio lighting, even illumination")
         self.strength = self.config.get("strength", 0.6)
         self.model = None
@@ -38,7 +37,7 @@ class LightingHarmonizer:
 
             self.model = StableDiffusionImg2ImgPipeline.from_pretrained(
                 "lllyasviel/ic-light-fbc-sd15",
-                torch_dtype=torch.float16 if self.device == "cuda" else torch.float32,
+                torch_dtype=__import__("torch").float16 if self.device == "cuda" else __import__("torch").float32,
                 safety_checker=None,
             )
             self.model = self.model.to(self.device)

@@ -10,7 +10,6 @@ from pathlib import Path
 from typing import Optional, List, Dict
 
 import numpy as np
-import torch
 from PIL import Image
 
 logger = logging.getLogger(__name__)
@@ -27,10 +26,17 @@ class MultiViewGenerator:
 
     def __init__(self, config: dict):
         self.config = config.get("character_gen", {})
-        self.device = self.config.get("device", "cuda" if torch.cuda.is_available() else "cpu")
+        self.device = self.config.get("device", "cpu")
         self.views = self.config.get("views", self.VIEWS)
         self.model = None
         self.model_type = None
+
+        try:
+            import torch
+            if torch.cuda.is_available():
+                self.device = "cuda"
+        except ImportError:
+            pass
 
     def load_model(self):
         """Load multi-view generation model. Tries multiple backends."""
@@ -64,7 +70,7 @@ class MultiViewGenerator:
         pipeline = DiffusionPipeline.from_pretrained(
             "sudo-ai/zero123plus-v1.2",
             custom_pipeline="sudo-ai/zero123plus-pipeline",
-            torch_dtype=torch.float16 if self.device == "cuda" else torch.float32,
+            torch_dtype=__import__("torch").float16 if self.device == "cuda" else __import__("torch").float32,
         )
         pipeline.scheduler = EulerAncestralDiscreteScheduler.from_config(
             pipeline.scheduler.config, timestep_spacing="trailing"
@@ -78,7 +84,7 @@ class MultiViewGenerator:
 
         pipeline = DiffusionPipeline.from_pretrained(
             "pengHTYX/Era3D_512_6views",
-            torch_dtype=torch.float16 if self.device == "cuda" else torch.float32,
+            torch_dtype=__import__("torch").float16 if self.device == "cuda" else __import__("torch").float32,
             trust_remote_code=True,
         )
         pipeline = pipeline.to(self.device)
@@ -91,7 +97,7 @@ class MultiViewGenerator:
         # CharacterGen uses a finetuned SD pipeline with view conditioning
         pipeline = StableDiffusionPipeline.from_pretrained(
             "fjbeing/CharacterGen",
-            torch_dtype=torch.float16 if self.device == "cuda" else torch.float32,
+            torch_dtype=__import__("torch").float16 if self.device == "cuda" else __import__("torch").float32,
             safety_checker=None,
         )
         pipeline = pipeline.to(self.device)

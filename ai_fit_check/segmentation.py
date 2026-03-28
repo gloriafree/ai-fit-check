@@ -1,8 +1,13 @@
 """
-Step 1: Clothing Segmentation using Grounded SAM 2
-===================================================
+Step 1: Clothing Segmentation
+===============================
 Extracts clothing from a screenshot image, removing background,
 price tags, models, and other non-clothing elements.
+
+Supports three backends (auto-fallback):
+  1. Grounded SAM 2 (best quality, requires PyTorch + GPU)
+  2. rembg (good quality, CPU-friendly, no PyTorch)
+  3. Simple center-crop (last resort)
 """
 
 import os
@@ -11,74 +16,77 @@ from pathlib import Path
 from typing import Optional
 
 import numpy as np
-import torch
 from PIL import Image
 
 logger = logging.getLogger(__name__)
 
 
 class ClothingSegmenter:
-    """Segments clothing items from screenshots using Grounded SAM 2."""
+    """Segments clothing items from screenshots."""
 
     def __init__(self, config: dict):
         self.config = config.get("segmentation", {})
-        self.device = self.config.get("device", "cuda" if torch.cuda.is_available() else "cpu")
+        self.device = self.config.get("device", "cpu")
         self.prompt = self.config.get("prompt", "clothing, garment")
         self.box_threshold = self.config.get("box_threshold", 0.3)
         self.text_threshold = self.config.get("text_threshold", 0.25)
         self.model = None
         self.sam_predictor = None
+        self._backend = None
+
+        # Try to detect CUDA availability without importing torch
+        try:
+            import torch
+            if torch.cuda.is_available():
+                self.device = "cuda"
+        except ImportError:
+            self.device = "cpu"
 
     def load_model(self):
-        """Load Grounded SAM 2 models."""
-        if self.model is not None:
-            logger.info("Segmentation model already loaded, skipping.")
+        """Load segmentation model. Tries backends in order of quality."""
+        if self._backend is not None:
             return
 
-        logger.info("Loading Grounded SAM 2 models...")
+        # Backend 1: Grounded SAM 2 (requires PyTorch + GPU)
+        if self.device == "cuda":
+            try:
+                self._load_grounded_sam()
+                return
+            except (ImportError, Exception) as e:
+                logger.info(f"Grounded SAM 2 not available: {e}")
 
+        # Backend 2: rembg (lightweight, CPU-friendly)
         try:
-            # Load Grounding DINO for text-guided detection
-            from groundingdino.util.inference import load_model as load_gd_model
-            from groundingdino.util.inference import predict as gd_predict
+            from rembg import remove as rembg_remove
+            self._rembg_remove = rembg_remove
+            self._backend = "rembg"
+            logger.info("Using rembg for clothing segmentation (CPU mode).")
+            return
+        except ImportError:
+            logger.info("rembg not installed.")
 
-            gd_config_path = self._get_model_path("groundingdino_swinb_cogcoor.pth", "config")
-            gd_weights_path = self._get_model_path("groundingdino_swinb_cogcoor.pth", "weights")
+        # Backend 3: Simple fallback
+        self._backend = "simple"
+        logger.warning("No segmentation model available. Using simple center-crop fallback.")
 
-            self.grounding_model = load_gd_model(gd_config_path, gd_weights_path, device=self.device)
-            self.gd_predict = gd_predict
+    def _load_grounded_sam(self):
+        """Load Grounded SAM 2 models (requires PyTorch)."""
+        import torch
+        from groundingdino.util.inference import load_model as load_gd_model
+        from groundingdino.util.inference import predict as gd_predict
+        from sam2.build_sam import build_sam2
+        from sam2.sam2_image_predictor import SAM2ImagePredictor
 
-            # Load SAM 2 for segmentation
-            from sam2.build_sam import build_sam2
-            from sam2.sam2_image_predictor import SAM2ImagePredictor
+        gd_config_path = self._get_model_path("groundingdino_swinb_cogcoor.pth", "config")
+        gd_weights_path = self._get_model_path("groundingdino_swinb_cogcoor.pth", "weights")
+        self.grounding_model = load_gd_model(gd_config_path, gd_weights_path, device=self.device)
+        self.gd_predict = gd_predict
 
-            sam2_checkpoint = self._get_model_path("sam2.1_hiera_large.pt")
-            sam2_config = "sam2.1_hiera_l.yaml"
-
-            sam2_model = build_sam2(sam2_config, sam2_checkpoint, device=self.device)
-            self.sam_predictor = SAM2ImagePredictor(sam2_model)
-
-            logger.info("Grounded SAM 2 models loaded successfully.")
-
-        except ImportError as e:
-            logger.warning(f"Grounded SAM 2 not available: {e}")
-            logger.info("Falling back to U2Net cloth segmentation...")
-            self._load_fallback_model()
-
-    def _load_fallback_model(self):
-        """Load lightweight U2Net cloth segmentation as fallback."""
-        try:
-            from transformers import pipeline
-            self.model = pipeline(
-                "image-segmentation",
-                model="mattmdjaga/segformer_b2_clothes",
-                device=0 if self.device == "cuda" else -1
-            )
-            self._use_fallback = True
-            logger.info("Fallback segmentation model (SegFormer clothes) loaded.")
-        except Exception as e:
-            logger.error(f"Failed to load fallback model: {e}")
-            raise
+        sam2_checkpoint = self._get_model_path("sam2.1_hiera_large.pt")
+        sam2_model = build_sam2("sam2.1_hiera_l.yaml", sam2_checkpoint, device=self.device)
+        self.sam_predictor = SAM2ImagePredictor(sam2_model)
+        self._backend = "grounded_sam"
+        logger.info("Grounded SAM 2 loaded successfully.")
 
     def segment(self, image_path: str, save_dir: Optional[str] = None) -> Image.Image:
         """
@@ -91,16 +99,18 @@ class ClothingSegmenter:
         Returns:
             PIL Image of the segmented clothing with transparent background
         """
-        if self.model is None and self.sam_predictor is None:
+        if self._backend is None:
             self.load_model()
 
         image = Image.open(image_path).convert("RGB")
-        logger.info(f"Segmenting clothing from: {image_path} ({image.size})")
+        logger.info(f"Segmenting clothing from: {image_path} ({image.size}) [backend: {self._backend}]")
 
-        if hasattr(self, '_use_fallback') and self._use_fallback:
-            result = self._segment_fallback(image)
-        else:
+        if self._backend == "grounded_sam":
             result = self._segment_grounded_sam(image)
+        elif self._backend == "rembg":
+            result = self._segment_rembg(image)
+        else:
+            result = self._segment_simple(image)
 
         # Save intermediate result if requested
         if save_dir:
@@ -111,11 +121,31 @@ class ClothingSegmenter:
 
         return result
 
+    def _segment_rembg(self, image: Image.Image) -> Image.Image:
+        """Segment using rembg (removes background, keeps foreground clothing)."""
+        result = self._rembg_remove(image)
+
+        # Crop to content bounding box with padding
+        bbox = result.getbbox()
+        if bbox:
+            w, h = result.size
+            pad = 20
+            bbox = (
+                max(0, bbox[0] - pad),
+                max(0, bbox[1] - pad),
+                min(w, bbox[2] + pad),
+                min(h, bbox[3] + pad),
+            )
+            result = result.crop(bbox)
+
+        return result
+
     def _segment_grounded_sam(self, image: Image.Image) -> Image.Image:
         """Segment using Grounded SAM 2 pipeline."""
+        import torch
+
         image_np = np.array(image)
 
-        # Step 1: Detect clothing bounding boxes with Grounding DINO
         boxes, logits, phrases = self.gd_predict(
             model=self.grounding_model,
             image=image,
@@ -130,10 +160,8 @@ class ClothingSegmenter:
 
         logger.info(f"Detected {len(boxes)} clothing regions: {phrases}")
 
-        # Step 2: Generate masks with SAM 2
         self.sam_predictor.set_image(image_np)
 
-        # Convert boxes to SAM format
         h, w = image_np.shape[:2]
         boxes_abs = boxes * torch.tensor([w, h, w, h])
 
@@ -142,68 +170,27 @@ class ClothingSegmenter:
             multimask_output=False,
         )
 
-        # Combine all clothing masks
         combined_mask = np.zeros((h, w), dtype=bool)
         for mask in masks:
             if mask.ndim == 3:
                 mask = mask[0]
             combined_mask |= mask
 
-        # Apply mask to create RGBA output
-        result = Image.new("RGBA", image.size, (0, 0, 0, 0))
-        image_rgba = image.convert("RGBA")
-        image_data = np.array(image_rgba)
-        image_data[~combined_mask, 3] = 0  # Set non-clothing pixels transparent
-        result = Image.fromarray(image_data)
-
-        return result
-
-    def _segment_fallback(self, image: Image.Image) -> Image.Image:
-        """Segment using SegFormer clothes model (fallback)."""
-        results = self.model(image)
-
-        # Clothing labels in the SegFormer clothes model
-        clothing_labels = {
-            "Upper-clothes", "Skirt", "Pants", "Dress",
-            "Belt", "Scarf", "Coat", "Jumpsuits"
-        }
-
-        # Combine all clothing masks
-        w, h = image.size
-        combined_mask = np.zeros((h, w), dtype=bool)
-
-        for result in results:
-            if result["label"] in clothing_labels:
-                mask = np.array(result["mask"])
-                combined_mask |= (mask > 128)
-                logger.info(f"  Found: {result['label']} (score: {result['score']:.3f})")
-
-        if not combined_mask.any():
-            logger.warning("No clothing segments found. Using full image.")
-            return image.convert("RGBA")
-
-        # Apply mask
         image_rgba = image.convert("RGBA")
         image_data = np.array(image_rgba)
         image_data[~combined_mask, 3] = 0
-        result = Image.fromarray(image_data)
+        return Image.fromarray(image_data)
 
-        # Crop to clothing bounding box with padding
-        bbox = result.getbbox()
-        if bbox:
-            pad = 20
-            bbox = (
-                max(0, bbox[0] - pad),
-                max(0, bbox[1] - pad),
-                min(w, bbox[2] + pad),
-                min(h, bbox[3] + pad),
-            )
-            result = result.crop(bbox)
-
-        return result
+    def _segment_simple(self, image: Image.Image) -> Image.Image:
+        """Simple fallback: center-crop the image (assumes clothing is centered)."""
+        w, h = image.size
+        # Crop center 70% of image
+        margin_x = int(w * 0.15)
+        margin_y = int(h * 0.1)
+        cropped = image.crop((margin_x, margin_y, w - margin_x, h - margin_y))
+        return cropped.convert("RGBA")
 
     def _get_model_path(self, filename: str, subdir: str = "") -> str:
-        """Get path to model file in the models directory."""
         base = Path(__file__).parent.parent / "models"
         if subdir:
             return str(base / subdir / filename)

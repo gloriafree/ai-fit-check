@@ -9,7 +9,6 @@ from pathlib import Path
 from typing import Optional
 
 import numpy as np
-import torch
 from PIL import Image
 
 logger = logging.getLogger(__name__)
@@ -22,8 +21,15 @@ class SuperResolver:
         self.config = config.get("super_resolution", {})
         self.scale = self.config.get("scale", 4)
         self.target_size = self.config.get("target_size", 1024)
-        self.device = self.config.get("device", "cuda" if torch.cuda.is_available() else "cpu")
+        self.device = self.config.get("device", "cpu")
         self.model = None
+
+        try:
+            import torch
+            if torch.cuda.is_available():
+                self.device = "cuda"
+        except ImportError:
+            pass
 
     def load_model(self):
         """Load Real-ESRGAN model."""
