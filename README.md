@@ -1,27 +1,64 @@
-# AI Fit Check - Virtual Try-On Pipeline
+# AI Fit Check
 
-一键截图衣服 → AI 虚拟试穿 → 三视图展示
+Screenshot a piece of clothing, AI tries it on you, and shows front/side/back views.
 
-## Pipeline Architecture
+The project has three parts: a **ML pipeline** for local virtual try-on, a **FastAPI server** that exposes the pipeline as an API, and an **iOS app** with a Share Extension so you can try on clothes from any app.
+
+## Project Structure
 
 ```
-截图/图片 ──→ [1. Grounded SAM] ──→ [2. Real-ESRGAN] ──→ [3. CharacterGen] ──→ [4. Fashn.ai] ──→ [5. IC-Light] ──→ 三视图输出
-  衣服图片      衣服分割/抠图         超分辨率增强          多角度人物生成        虚拟试穿API         光影统一          front/side/back
+ai_fit_check/
+├── ai_fit_check/           # ML pipeline package
+│   ├── segmentation.py     # Grounded SAM clothing segmentation
+│   ├── super_resolution.py # Real-ESRGAN upscaling
+│   ├── multiview_gen.py    # Multi-view person generation
+│   ├── tryon.py            # Fashn.ai virtual try-on
+│   ├── lighting.py         # IC-Light harmonization
+│   └── pipeline.py         # Pipeline orchestrator
+├── server/                 # FastAPI backend (see server/README.md)
+│   ├── main.py             # API server
+│   ├── Dockerfile
+│   └── docker-compose.yml
+├── ios/                    # SwiftUI iOS app (see ios/SETUP_GUIDE.md)
+│   ├── AIFitCheck/         # Main app + Share Extension
+│   └── AIFitCheck.xcodeproj
+├── configs/
+│   └── config.yaml         # API keys, model params
+├── data/
+│   ├── input/              # Clothing screenshots
+│   ├── output/             # Results
+│   └── person_images/      # Your photos
+├── models/                 # Downloaded model weights
+├── scripts/
+│   ├── setup.sh            # Full setup (GPU + all models)
+│   ├── setup_lite.sh       # Lite setup (CPU, smaller download)
+│   ├── test_fashn_api.py   # API connectivity test
+│   └── download_examples.py
+├── run.py                  # CLI entry point
+├── requirements.txt        # Full dependencies
+└── requirements-lite.txt   # Lite dependencies (CPU only)
+```
+
+## Pipeline
+
+```
+Screenshot ──→ [Grounded SAM] ──→ [Real-ESRGAN] ──→ [CharacterGen] ──→ [Fashn.ai] ──→ [IC-Light] ──→ 3-view output
+ clothing       segmentation       upscale            multi-view          try-on         lighting      front/side/back
 ```
 
 ## Quick Start
 
-### 1. Setup Environment
+### 1. Setup
 
 ```bash
-# Clone and enter project
 cd ai_fit_check
 
-# Run setup script (installs everything)
-chmod +x scripts/setup.sh
+# Full setup (GPU, all models)
 bash scripts/setup.sh
+source venv/bin/activate
 
-# Activate virtual environment
+# Or lite setup (CPU only, smaller download)
+bash scripts/setup_lite.sh
 source venv/bin/activate
 ```
 
@@ -31,11 +68,10 @@ source venv/bin/activate
 python scripts/test_fashn_api.py
 ```
 
-### 3. Prepare Your Images
+### 3. Prepare Images
 
-Put your images in the `data/` folder:
 - `data/input/` — clothing screenshots
-- `data/person_images/` — your full-body photos (front-facing, even lighting, natural pose)
+- `data/person_images/` — full-body photos (front-facing, even lighting, natural pose)
 
 ### 4. Run Try-On
 
@@ -46,47 +82,43 @@ python run.py --clothing data/input/dress.png --person data/person_images/me.jpg
 # Quick mode (front view only, faster)
 python run.py --clothing data/input/dress.png --person data/person_images/me.jpg --skip-multiview
 
-# Specify clothing category for better results
+# Specify clothing category
 python run.py --clothing screenshot.png --person me.jpg --category tops
 ```
 
 ### 5. Check Results
 
 Output is saved to `data/output/<timestamp>/`:
-- `front.png` — front view
-- `side.png` — side view
-- `back.png` — back view
+- `front.png`, `side.png`, `back.png`
 - `combined_3view.png` — all three views side by side
 
-## Project Structure
+## Server
 
+The FastAPI server wraps the pipeline into a REST API with person management and wardrobe storage. Supports Docker deployment.
+
+```bash
+cd server
+pip install -r requirements.txt
+python main.py
+# Server runs at http://localhost:8000
+# Swagger docs at http://localhost:8000/docs
 ```
-ai_fit_check/
-├── ai_fit_check/           # Main package
-│   ├── __init__.py
-│   ├── segmentation.py     # Step 1: Grounded SAM clothing segmentation
-│   ├── super_resolution.py # Step 2: Real-ESRGAN upscaling
-│   ├── multiview_gen.py    # Step 3: Multi-view person generation
-│   ├── tryon.py            # Step 4: Fashn.ai virtual try-on
-│   ├── lighting.py         # Step 5: IC-Light harmonization
-│   └── pipeline.py         # Main pipeline orchestrator
-├── configs/
-│   └── config.yaml         # All configuration (API keys, model params)
-├── data/
-│   ├── input/              # Clothing screenshots go here
-│   ├── output/             # Results saved here
-│   └── person_images/      # Your photos go here
-├── models/                 # Downloaded model weights
-├── scripts/
-│   ├── setup.sh            # One-click setup
-│   └── test_fashn_api.py   # API connectivity test
-├── run.py                  # CLI entry point
-└── requirements.txt        # Python dependencies
-```
+
+See [server/README.md](server/README.md) for API endpoints, Docker setup, and configuration. Also: [server/QUICKSTART.md](server/QUICKSTART.md), [server/ARCHITECTURE.md](server/ARCHITECTURE.md), [server/DEPLOYMENT.md](server/DEPLOYMENT.md).
+
+## iOS App
+
+SwiftUI app with a Share Extension — share a clothing image from any app (Safari, Instagram, Taobao) to try it on.
+
+- **Home**: Instructions and quick try-on
+- **Wardrobe**: Saved try-on results
+- **Profile**: Person photo upload and server settings
+
+See [ios/SETUP_GUIDE.md](ios/SETUP_GUIDE.md) and [ios/AIFitCheck/README.md](ios/AIFitCheck/README.md) for Xcode setup and architecture details.
 
 ## Configuration
 
-Edit `configs/config.yaml` to customize:
+Edit `configs/config.yaml`:
 
 | Setting | Default | Description |
 |---------|---------|-------------|
