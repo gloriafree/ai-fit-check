@@ -1,0 +1,51 @@
+# AI Fit Check Configuration
+# ===========================
+
+# Fashn.ai Virtual Try-On API
+fashn:
+  api_key: "fa-hCmRehLAH1AF-kH6mL3eRrEwXDZ4qXmoWpDh2"
+  base_url: "https://api.fashn.ai/v1"
+  model_id: "viton_hd"  # Options: viton_hd, viton_hd_quality
+  timeout: 120  # seconds
+
+# Grounded SAM - Clothing Segmentation
+segmentation:
+  model: "grounded_sam2"
+  prompt: "clothing, garment, top, shirt, dress, jacket, pants, skirt"
+  box_threshold: 0.3
+  text_threshold: 0.25
+  device: "cuda"  # or "cpu"
+
+# Real-ESRGAN - Super Resolution
+super_resolution:
+  model: "RealESRGAN_x4plus"
+  scale: 4
+  target_size: 1024  # output target size (px)
+  device: "cuda"
+
+# CharacterGen - Multi-view Person Generation
+character_gen:
+  model: "charactergen"
+  views:
+    - name: "front"
+      azimuth: 0
+    - name: "side"
+      azimuth: 90
+    - name: "back"
+      azimuth: 180
+  device: "cuda"
+
+# IC-Light - Lighting Harmonization
+ic_light:
+  model: "iclight_sd15_fc"
+  prompt: "soft studio lighting, even illumination"
+  strength: 0.6
+  device: "cuda"
+
+# Pipeline Settings
+pipeline:
+  output_dir: "data/output"
+  input_dir: "data/input"
+  person_dir: "data/person_images"
+  save_intermediate: true  # save each step's output for debugging
+  log_level: "INFO"

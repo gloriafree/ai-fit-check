@@ -1,0 +1,38 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+dist/
+build/
+venv/
+.venv/
+*.egg
+
+# Model weights (too large for git)
+models/*.pth
+models/*.pt
+models/*.bin
+models/*.safetensors
+
+# Data files (user-specific)
+data/input/*
+data/output/*
+data/person_images/*
+!data/input/.gitkeep
+!data/output/.gitkeep
+!data/person_images/.gitkeep
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Environment
+.env
+*.env.local
