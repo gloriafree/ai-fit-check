@@ -29,7 +29,7 @@ import yaml
 import requests as http_requests
 from fastapi import FastAPI, UploadFile, File, Form, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, HTMLResponse
 from PIL import Image
 
 # ── Logging ──────────────────────────────────────────────────────────────────
@@ -326,8 +326,9 @@ async def get_wardrobe_image(item_id: str):
 
 # ── Root ─────────────────────────────────────────────────────────────────────
 
-@app.get("/")
-async def root():
+@app.get("/api")
+async def api_root():
+    """JSON endpoint for programmatic access."""
     return {
         "name": "AI Fit Check Backend",
         "version": "1.0.0",
@@ -343,6 +344,91 @@ async def root():
             "GET  /api/wardrobe/{id}/image",
         ],
     }
+
+
+@app.get("/", response_class=HTMLResponse)
+async def root():
+    person_set = get_latest_person_path() is not None
+    api_key_set = bool(FASHN_API_KEY)
+    wardrobe_count = len(list(WARDROBE_DIR.glob("*.json")))
+
+    def dot(ok: bool) -> str:
+        color = "#22c55e" if ok else "#ef4444"
+        label = "Ready" if ok else "Not set"
+        return f'<span style="color:{color}; font-weight:600;">&#9679; {label}</span>'
+
+    return f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AI Fit Check</title>
+<style>
+  * {{ margin: 0; padding: 0; box-sizing: border-box; }}
+  body {{ font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+         background: #0f172a; color: #e2e8f0; min-height: 100vh;
+         display: flex; align-items: center; justify-content: center; }}
+  .card {{ background: #1e293b; border-radius: 16px; padding: 48px;
+           max-width: 600px; width: 100%; box-shadow: 0 25px 50px rgba(0,0,0,.4); }}
+  h1 {{ font-size: 2rem; margin-bottom: 8px; color: #f8fafc; }}
+  .subtitle {{ color: #94a3b8; margin-bottom: 32px; }}
+  .status {{ background: #0f172a; border-radius: 10px; padding: 20px; margin-bottom: 28px; }}
+  .status h2 {{ font-size: .85rem; text-transform: uppercase; letter-spacing: .08em;
+                color: #64748b; margin-bottom: 12px; }}
+  .status-row {{ display: flex; justify-content: space-between; padding: 6px 0;
+                 font-size: .95rem; }}
+  .status-label {{ color: #94a3b8; }}
+  .endpoints {{ margin-bottom: 28px; }}
+  .endpoints h2 {{ font-size: .85rem; text-transform: uppercase; letter-spacing: .08em;
+                   color: #64748b; margin-bottom: 12px; }}
+  .ep {{ display: flex; gap: 12px; padding: 8px 0; border-bottom: 1px solid #334155;
+         font-size: .9rem; }}
+  .ep:last-child {{ border-bottom: none; }}
+  .method {{ font-weight: 700; min-width: 60px; }}
+  .get {{ color: #22d3ee; }}  .post {{ color: #a78bfa; }}  .delete {{ color: #f87171; }}
+  .path {{ color: #cbd5e1; }}
+  .desc {{ color: #64748b; margin-left: auto; font-size: .85rem; }}
+  .links {{ display: flex; gap: 12px; }}
+  .links a {{ display: inline-block; padding: 10px 20px; border-radius: 8px;
+              text-decoration: none; font-weight: 600; font-size: .9rem; transition: opacity .15s; }}
+  .links a:hover {{ opacity: .85; }}
+  .btn-primary {{ background: #6366f1; color: #fff; }}
+  .btn-secondary {{ background: #334155; color: #e2e8f0; }}
+</style>
+</head>
+<body>
+<div class="card">
+  <h1>AI Fit Check</h1>
+  <p class="subtitle">Virtual try-on powered by Fashn.ai</p>
+
+  <div class="status">
+    <h2>Server Status</h2>
+    <div class="status-row"><span class="status-label">API Key</span> {dot(api_key_set)}</div>
+    <div class="status-row"><span class="status-label">Person Photo</span> {dot(person_set)}</div>
+    <div class="status-row"><span class="status-label">Wardrobe</span>
+      <span style="color:#e2e8f0; font-weight:600;">{wardrobe_count} item{"s" if wardrobe_count != 1 else ""}</span>
+    </div>
+  </div>
+
+  <div class="endpoints">
+    <h2>API Endpoints</h2>
+    <div class="ep"><span class="method get">GET</span>  <span class="path">/health</span>           <span class="desc">Server health</span></div>
+    <div class="ep"><span class="method post">POST</span> <span class="path">/api/person</span>      <span class="desc">Upload person photo</span></div>
+    <div class="ep"><span class="method get">GET</span>  <span class="path">/api/person</span>       <span class="desc">Get person photo</span></div>
+    <div class="ep"><span class="method post">POST</span> <span class="path">/api/tryon</span>       <span class="desc">Virtual try-on</span></div>
+    <div class="ep"><span class="method get">GET</span>  <span class="path">/api/wardrobe</span>     <span class="desc">List wardrobe</span></div>
+    <div class="ep"><span class="method post">POST</span> <span class="path">/api/wardrobe</span>    <span class="desc">Save outfit</span></div>
+    <div class="ep"><span class="method delete">DEL</span> <span class="path">/api/wardrobe/{{id}}</span> <span class="desc">Delete outfit</span></div>
+  </div>
+
+  <div class="links">
+    <a href="/docs" class="btn-primary">Swagger Docs</a>
+    <a href="/api" class="btn-secondary">JSON API</a>
+    <a href="/health" class="btn-secondary">Health Check</a>
+  </div>
+</div>
+</body>
+</html>"""
 
 
 if __name__ == "__main__":
