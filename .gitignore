@@ -33,6 +33,9 @@ Thumbs.db
 *.swp
 *.swo
 
+# Node
+node_modules/
+
 # Environment
 .env
 *.env.local

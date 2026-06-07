@@ -1,0 +1,82 @@
+{
+  "nav": {
+    "home": "首页",
+    "catalog": "商品",
+    "profile": "档案"
+  },
+  "landing": {
+    "title": "找到你的完美尺码",
+    "subtitle": "AI智能尺码推荐，适合每一种身材",
+    "cta": "开始使用",
+    "step1": "输入身体数据",
+    "step1Desc": "快速设置身体档案",
+    "step2": "浏览商品",
+    "step2Desc": "探索精选上装系列",
+    "step3": "查看合身度",
+    "step3Desc": "获取个性化合身评分"
+  },
+  "profile": {
+    "title": "身体档案",
+    "subtitle": "输入你的身体数据以获取精准的尺码推荐",
+    "gender": "性别",
+    "male": "男",
+    "female": "女",
+    "height": "身高",
+    "weight": "体重",
+    "chest": "胸围",
+    "waist": "腰围",
+    "hip": "臀围",
+    "shoulder": "肩宽",
+    "armLength": "臂长",
+    "required": "必填",
+    "optional": "选填",
+    "save": "保存档案",
+    "saved": "档案已保存！",
+    "cm": "厘米",
+    "kg": "公斤"
+  },
+  "catalog": {
+    "title": "上装系列",
+    "all": "全部",
+    "filter": "筛选",
+    "fitType": "版型",
+    "slim": "修身",
+    "regular": "常规",
+    "oversized": "宽松",
+    "noProfile": "设置身体档案以获取合身推荐",
+    "setupProfile": "设置档案"
+  },
+  "product": {
+    "size": "尺码",
+    "sizeChart": "尺码表",
+    "recommended": "推荐",
+    "checkFit": "查看合身度",
+    "fitPreview": "合身预览",
+    "chest": "胸围",
+    "shoulder": "肩宽",
+    "waist": "腰围",
+    "length": "衣长"
+  },
+  "result": {
+    "title": "合身分析",
+    "fits": "非常合身",
+    "mostlyFits": "基本合身",
+    "doesntFit": "不太合身",
+    "overallScore": "综合评分",
+    "regionDetails": "各部位详情",
+    "ease": "余量",
+    "recommendation": "建议",
+    "alternativeSizes": "试试其他尺码",
+    "addToCart": "加入购物车",
+    "added": "已加入购物车！",
+    "tooTight": "过紧",
+    "slightlyTight": "偏紧",
+    "ideal": "理想合身",
+    "slightlyLoose": "偏松",
+    "tooLoose": "过松",
+    "recFits": "{size}码非常适合你！{region}部位的余量恰到好处，穿着舒适。",
+    "recMostly": "{size}码基本合身。建议{suggestion}以改善{region}部位的合身度。",
+    "recDoesntFit": "{size}码不太合适。建议尝试{altSize}码以获得更好的整体合身效果。",
+    "backToCatalog": "返回商品列表"
+  }
+}

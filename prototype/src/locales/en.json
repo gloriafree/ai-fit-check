@@ -1,0 +1,82 @@
+{
+  "nav": {
+    "home": "Home",
+    "catalog": "Catalog",
+    "profile": "Profile"
+  },
+  "landing": {
+    "title": "Find Your Perfect Fit",
+    "subtitle": "AI-powered fit recommendations for every body",
+    "cta": "Get Started",
+    "step1": "Enter Measurements",
+    "step1Desc": "Quick body profile setup",
+    "step2": "Browse Catalog",
+    "step2Desc": "Explore our curated tops",
+    "step3": "Check Fit",
+    "step3Desc": "Get personalized fit scores"
+  },
+  "profile": {
+    "title": "Body Profile",
+    "subtitle": "Enter your measurements for accurate fit recommendations",
+    "gender": "Gender",
+    "male": "Male",
+    "female": "Female",
+    "height": "Height",
+    "weight": "Weight",
+    "chest": "Chest",
+    "waist": "Waist",
+    "hip": "Hip",
+    "shoulder": "Shoulder Width",
+    "armLength": "Arm Length",
+    "required": "Required",
+    "optional": "Optional",
+    "save": "Save Profile",
+    "saved": "Profile saved!",
+    "cm": "cm",
+    "kg": "kg"
+  },
+  "catalog": {
+    "title": "Tops Collection",
+    "all": "All",
+    "filter": "Filter",
+    "fitType": "Fit Type",
+    "slim": "Slim",
+    "regular": "Regular",
+    "oversized": "Oversized",
+    "noProfile": "Set up your body profile for fit recommendations",
+    "setupProfile": "Set Up Profile"
+  },
+  "product": {
+    "size": "Size",
+    "sizeChart": "Size Chart",
+    "recommended": "Recommended",
+    "checkFit": "Check Fit",
+    "fitPreview": "Fit Preview",
+    "chest": "Chest",
+    "shoulder": "Shoulder",
+    "waist": "Waist",
+    "length": "Length"
+  },
+  "result": {
+    "title": "Fit Analysis",
+    "fits": "Fits Well",
+    "mostlyFits": "Mostly Fits",
+    "doesntFit": "Doesn't Fit",
+    "overallScore": "Overall Score",
+    "regionDetails": "Region Details",
+    "ease": "Ease",
+    "recommendation": "Recommendation",
+    "alternativeSizes": "Try Another Size",
+    "addToCart": "Add to Cart",
+    "added": "Added to cart!",
+    "tooTight": "Too tight",
+    "slightlyTight": "Slightly tight",
+    "ideal": "Ideal fit",
+    "slightlyLoose": "Slightly loose",
+    "tooLoose": "Too loose",
+    "recFits": "Size {size} fits you well! The {region} has ideal ease for a comfortable fit.",
+    "recMostly": "Size {size} mostly fits. Consider {suggestion} for a better fit in the {region} area.",
+    "recDoesntFit": "Size {size} is not ideal. We recommend trying size {altSize} instead for a better overall fit.",
+    "backToCatalog": "Back to Catalog"
+  }
+}
